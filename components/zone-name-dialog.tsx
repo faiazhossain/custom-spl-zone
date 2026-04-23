@@ -11,6 +11,7 @@ interface ZoneNameDialogProps {
   defaultName?: string;
   title?: string;
   saveLabel?: string;
+  isSaving?: boolean;
 }
 
 export function ZoneNameDialog({
@@ -20,42 +21,47 @@ export function ZoneNameDialog({
   defaultName = "",
   title = "Name Your Zone",
   saveLabel = "Save",
+  isSaving = false,
 }: ZoneNameDialogProps) {
   const [zoneName, setZoneName] = useState(defaultName);
 
   const handleSave = () => {
     const trimmedName = zoneName.trim();
-    if (trimmedName) {
+    if (trimmedName && !isSaving) {
       onSave(trimmedName);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && zoneName.trim()) {
+    if (e.key === "Enter" && zoneName.trim() && !isSaving) {
       handleSave();
     }
   };
 
   return (
     <Dialog open={open} onClose={onClose} title={title}>
-      <div className="space-y-4">
+      <div className='space-y-4'>
         <div>
-          <label htmlFor="zone-name" className="block text-sm font-medium text-foreground mb-2">
+          <label
+            htmlFor='zone-name'
+            className='block text-sm font-medium text-foreground mb-2'
+          >
             Zone Name
           </label>
           <input
-            id="zone-name"
-            type="text"
+            id='zone-name'
+            type='text'
             value={zoneName}
             onChange={(e) => setZoneName(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Enter zone name..."
+            placeholder='Enter zone name...'
+            disabled={isSaving}
             className={cn(
               "w-full px-3 py-2 rounded-md",
               "bg-background border border-input",
               "text-foreground placeholder:text-muted-foreground",
               "focus:outline-none focus:ring-2 focus:ring-ring",
-              "transition-colors"
+              "transition-colors",
             )}
             autoFocus
           />
@@ -63,28 +69,32 @@ export function ZoneNameDialog({
 
         <DialogActions>
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (!isSaving) onClose();
+            }}
+            disabled={isSaving}
             className={cn(
               "px-4 py-2 rounded-md text-sm font-medium",
               "bg-secondary text-secondary-foreground",
               "hover:bg-secondary/80",
-              "transition-colors"
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              "transition-colors",
             )}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            disabled={!zoneName.trim()}
+            disabled={!zoneName.trim() || isSaving}
             className={cn(
               "px-4 py-2 rounded-md text-sm font-medium",
               "bg-primary text-primary-foreground",
               "hover:bg-primary/90",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              "transition-colors"
+              "transition-colors",
             )}
           >
-            {saveLabel}
+            {isSaving ? "Saving..." : saveLabel}
           </button>
         </DialogActions>
       </div>

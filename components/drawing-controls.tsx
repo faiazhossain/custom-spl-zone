@@ -5,6 +5,7 @@ import { Pencil, X, Check } from "lucide-react";
 
 interface DrawingControlsProps {
   isDrawing: boolean;
+  isEditing?: boolean;
   pointCount: number;
   onStartDrawing: () => void;
   onCancelDrawing: () => void;
@@ -14,12 +15,17 @@ interface DrawingControlsProps {
 
 export function DrawingControls({
   isDrawing,
+  isEditing = false,
   pointCount,
   onStartDrawing,
   onCancelDrawing,
   onCompleteDrawing,
   disabled = false,
 }: DrawingControlsProps) {
+  const modeLabel = isEditing ? "Editing Mode" : "Drawing Mode";
+  const modeColor = isEditing ? "bg-blue-500" : "bg-purple-500";
+  const buttonText = isEditing ? "Save Changes" : "Done";
+
   if (isDrawing) {
     return (
       <div className='flex flex-col gap-2'>
@@ -27,10 +33,12 @@ export function DrawingControls({
         <div className='bg-card/95 backdrop-blur-sm rounded-lg shadow-lg border border-border p-3 min-w-[200px]'>
           <div className='flex items-center justify-between mb-3'>
             <span className='text-sm font-medium text-foreground'>
-              Drawing Mode
+              {modeLabel}
             </span>
             <div className='flex items-center gap-1'>
-              <div className='w-2 h-2 rounded-full bg-purple-500 animate-pulse' />
+              <div
+                className={cn("w-2 h-2 rounded-full animate-pulse", modeColor)}
+              />
               <span className='text-xs text-muted-foreground'>
                 {pointCount} pts
               </span>
@@ -38,9 +46,11 @@ export function DrawingControls({
           </div>
 
           <p className='text-xs text-muted-foreground mb-3'>
-            {pointCount < 3
-              ? `Click to add points (${3 - pointCount} more required)`
-              : "Click to add more points, or complete"}
+            {isEditing
+              ? "Drag points to move, click edges to add, right-click point to remove"
+              : pointCount < 3
+                ? `Click to add points (${3 - pointCount} more required)`
+                : "Click to add more points, or complete"}
           </p>
 
           <div className='flex gap-2'>
@@ -70,7 +80,7 @@ export function DrawingControls({
                 )}
               >
                 <Check className='w-4 h-4' />
-                Done
+                {buttonText}
               </button>
             )}
           </div>
@@ -86,7 +96,16 @@ export function DrawingControls({
                 <span className='font-mono bg-muted px-1 rounded'>
                   Enter
                 </span>{" "}
-                Finish
+                {isEditing ? "Save" : "Finish"}
+              </>
+            )}
+            {isEditing && (
+              <>
+                {" "}
+                <span className='font-mono bg-muted px-1 rounded'>
+                  R-Click
+                </span>{" "}
+                Remove point
               </>
             )}
           </p>

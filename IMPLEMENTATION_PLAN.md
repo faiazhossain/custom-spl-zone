@@ -73,13 +73,13 @@ A Next.js application with MapLibre GL for drawing, saving, editing, and deletin
 
 ### Phase 5: API Integration
 
-- [ ] Create API client with proper error handling
-- [ ] Implement save zone mutation
-- [ ] Implement fetch zones query
-- [ ] Implement edit zone mutation
-- [ ] Implement delete zone mutation
-- [ ] Add loading states
-- [ ] Add error handling with user feedback
+- [x] Create API client with proper error handling
+- [x] Implement save zone mutation
+- [x] Implement fetch zones query
+- [x] Implement edit zone mutation
+- [x] Implement delete zone mutation
+- [x] Add loading states
+- [x] Add error handling with user feedback
 
 ### Phase 6: Edit & Delete Functionality
 
@@ -197,9 +197,9 @@ Response shapes are still to be confirmed during implementation and should be ha
 - [x] Phase 2: MapLibre Integration
 - [x] Phase 3: Polygon Drawing System
 - [x] Phase 4: Zone Management UI
-- [ ] Phase 5: API Integration
+- [x] Phase 5: API Integration
 - [ ] Phase 6: Edit & Delete Functionality
 - [ ] Phase 7: Styling & Polish
 - [ ] Phase 8: Testing & Accessibility
 
-**Overall Progress:** 4/8 phases complete
+**Overall Progress:** 5/8 phases complete

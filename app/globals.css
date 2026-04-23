@@ -83,12 +83,20 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 /* MapLibre GL overrides */
 .maplibregl-map {
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .maplibregl-popup-content {
@@ -110,6 +118,19 @@ body {
 
 .maplibregl-ctrl-group button:hover {
   background: var(--muted);
+}
+
+/* Keep Mapbox Draw controls aligned with the purple theme */
+.maplibregl-ctrl-group .mapbox-gl-draw_ctrl-draw-btn:hover,
+.maplibregl-ctrl-group .mapbox-gl-draw_ctrl-draw-btn:focus-visible {
+  background: var(--purple-100);
+}
+
+.maplibregl-ctrl-group
+  .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_ctrl-draw-btn-active,
+.maplibregl-ctrl-group
+  .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_ctrl-draw-btn-active:hover {
+  background: var(--purple-200);
 }
 
 /* Ensure map controls appear above custom overlays */
