@@ -149,6 +149,18 @@ export default function Home() {
 
   // Mobile sidebar state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  // Zone popup state
+  const [zonePopup, setZonePopup] = useState<{
+    zoneId: string;
+    zoneName: string;
+    lng: number;
+    lat: number;
+  } | null>(null);
+
+  // Handler for closing popup
+  const handleClosePopup = useCallback(() => {
+    setZonePopup(null);
+  }, []);
 
   const fetchZones = useCallback(async () => {
     const response = await api.getZones();
@@ -284,7 +296,10 @@ export default function Home() {
 
   const handleCompleteDrawing = useCallback(
     (coordinates: [number, number][]) => {
-      console.log("[handleCompleteDrawing] Called with coordinates:", coordinates);
+      console.log(
+        "[handleCompleteDrawing] Called with coordinates:",
+        coordinates,
+      );
       if (!editingZone) {
         setPendingZone(coordinates);
         setShowNameDialog(true);
@@ -299,10 +314,27 @@ export default function Home() {
     // TODO: Fit map to zone bounds
   }, []);
 
-  const handleZoneClick = useCallback((zoneId: string) => {
-    setSelectedZoneId(zoneId);
-    // TODO: Fit map to zone bounds
-  }, []);
+  const handleZoneClick = useCallback(
+    (zoneId: string, lngLat?: [number, number]) => {
+      console.log("[handleZoneClick] zoneId:", zoneId, "lngLat:", lngLat, "drawingMode:", drawingMode);
+      setSelectedZoneId(zoneId);
+      // Show popup at the click location for UX-friendly editing
+      if (lngLat && drawingMode === "none") {
+        const zone = zones.find((z) => z.id === zoneId);
+        if (zone) {
+          const popupData = {
+            zoneId,
+            zoneName: zone.zone_name,
+            lng: lngLat[0],
+            lat: lngLat[1],
+          };
+          console.log("[handleZoneClick] Setting zonePopup:", popupData);
+          setZonePopup(popupData);
+        }
+      }
+    },
+    [zones, drawingMode],
+  );
 
   const handleEditZone = useCallback(
     (zone: Zone) => {
@@ -327,6 +359,18 @@ export default function Home() {
       );
     },
     [isDeletingZone, isSavingZone],
+  );
+
+  // Handler for editing from popup
+  const handleEditFromPopup = useCallback(
+    (zoneId: string) => {
+      const zone = zones.find((z) => z.id === zoneId);
+      if (zone) {
+        setZonePopup(null); // Close popup first
+        handleEditZone(zone);
+      }
+    },
+    [zones, handleEditZone],
   );
 
   const handleUpdateZoneName = useCallback(
@@ -420,6 +464,7 @@ export default function Home() {
           editingCoordinates={
             drawingMode === "editing" ? editingSeedCoordinates : null
           }
+          editingZoneId={drawingMode === "editing" ? editingZone?.id : null}
           onDrawingComplete={handleCompleteDrawing}
           onDrawingCancel={handleCancelDrawing}
           onPointsChange={handlePointsChange}
@@ -434,7 +479,10 @@ export default function Home() {
             } => z !== null,
           )}
           selectedZoneId={selectedZoneId}
+          zonePopup={zonePopup}
           onZoneClick={handleZoneClick}
+          onClosePopup={handleClosePopup}
+          onEditFromPopup={handleEditFromPopup}
         />
 
         {/* Header Overlay */}
@@ -460,7 +508,7 @@ export default function Home() {
 
         {/* Edit Actions */}
         {drawingMode === "editing" && (
-          <div className='absolute top-24 right-4 z-10 flex gap-2'>
+          <div className='absolute top-4 right-16 z-10 flex gap-2'>
             <button
               onClick={handleCancelDrawing}
               disabled={isSavingZone}
@@ -471,7 +519,7 @@ export default function Home() {
             <button
               onClick={() => void handleSaveEditedZone()}
               disabled={isSavingZone || currentPoints.length < 3}
-              className='px-3 py-2 rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-60'
+              className='px-3 py-2 rounded-lg bg-red-600 text-white shadow-sm hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-60'
             >
               Save Changes
             </button>
@@ -494,7 +542,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <li>Use the polygon tool at top-left of the map</li>
+                  <li>Use the polygon tool at top-right of the map</li>
                   <li>
                     Click to place vertices and click first point to finish
                   </li>

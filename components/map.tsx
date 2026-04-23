@@ -16,8 +16,10 @@ const MAX_ZOOM = Number(process.env.NEXT_PUBLIC_MAX_ZOOM) || 18;
 const MAP_STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL || "";
 
 const ZONES_SOURCE_ID = "zones-source";
-const ZONES_LAYER_ID = "zones-layer";
-const ZONES_HOVER_LAYER_ID = "zones-hover-layer";
+const ZONES_LAYER_ID = "zones-fill";
+const ZONES_BORDER_LAYER_ID = "zones-border";
+const SELECTED_ZONE_SOURCE_ID = "selected-zone-source";
+const SELECTED_ZONE_LAYER_ID = "selected-zone-layer";
 
 interface ZoneFeature {
   id: string;
@@ -29,13 +31,17 @@ interface MapProps {
   drawingMode: DrawingMode;
   startDrawingSignal?: number;
   editingCoordinates?: [number, number][] | null;
+  editingZoneId?: string | null;
   onDrawingComplete?: (coordinates: [number, number][]) => void;
   onDrawingCancel?: () => void;
   onPointsChange?: (points: [number, number][]) => void;
   onAreaChange?: (squareMeters: number | null) => void;
   zones?: ZoneFeature[];
   selectedZoneId?: string | null;
-  onZoneClick?: (zoneId: string) => void;
+  zonePopup?: { zoneId: string; zoneName: string; lng: number; lat: number } | null;
+  onZoneClick?: (zoneId: string, lngLat?: [number, number]) => void;
+  onClosePopup?: () => void;
+  onEditFromPopup?: (zoneId: string) => void;
   className?: string;
 }
 
@@ -70,8 +76,8 @@ const drawStyles: object[] = [
     type: "fill",
     filter: ["all", ["==", "active", "true"], ["==", "$type", "Polygon"]],
     paint: {
-      "fill-color": "#fbb03b",
-      "fill-outline-color": "#fbb03b",
+      "fill-color": "#9333ea",
+      "fill-outline-color": "#9333ea",
       "fill-opacity": 0.1,
     },
   },
@@ -81,7 +87,7 @@ const drawStyles: object[] = [
     filter: ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
     paint: {
       "circle-radius": 3,
-      "circle-color": "#fbb03b",
+      "circle-color": "#9333ea",
     },
   },
   {
@@ -111,7 +117,7 @@ const drawStyles: object[] = [
       "line-join": "round",
     },
     paint: {
-      "line-color": "#fbb03b",
+      "line-color": "#9333ea",
       "line-dasharray": [0.2, 2],
       "line-width": 2,
     },
@@ -143,7 +149,7 @@ const drawStyles: object[] = [
       "line-join": "round",
     },
     paint: {
-      "line-color": "#fbb03b",
+      "line-color": "#9333ea",
       "line-dasharray": [0.2, 2],
       "line-width": 2,
     },
@@ -159,7 +165,7 @@ const drawStyles: object[] = [
     ],
     paint: {
       "circle-radius": 5,
-      "circle-color": "#fff",
+      "circle-color": "#9333ea",
     },
   },
   {
@@ -173,7 +179,7 @@ const drawStyles: object[] = [
     ],
     paint: {
       "circle-radius": 3,
-      "circle-color": "#fbb03b",
+      "circle-color": "#9333ea",
     },
   },
   {
@@ -189,7 +195,7 @@ const drawStyles: object[] = [
     paint: {
       "circle-radius": 5,
       "circle-opacity": 1,
-      "circle-color": "#fff",
+      "circle-color": "#9333ea",
     },
   },
   {
@@ -218,7 +224,7 @@ const drawStyles: object[] = [
     ],
     paint: {
       "circle-radius": 7,
-      "circle-color": "#fff",
+      "circle-color": "#9333ea",
     },
   },
   {
@@ -232,7 +238,7 @@ const drawStyles: object[] = [
     ],
     paint: {
       "circle-radius": 5,
-      "circle-color": "#fbb03b",
+      "circle-color": "#9333ea",
     },
   },
   {
@@ -240,9 +246,9 @@ const drawStyles: object[] = [
     type: "fill",
     filter: ["all", ["==", "mode", "static"], ["==", "$type", "Polygon"]],
     paint: {
-      "fill-color": "#404040",
-      "fill-outline-color": "#404040",
-      "fill-opacity": 0.1,
+      "fill-color": "#3b82f6",
+      "fill-outline-color": "#3b82f6",
+      "fill-opacity": 0.2,
     },
   },
   {
@@ -254,7 +260,7 @@ const drawStyles: object[] = [
       "line-join": "round",
     },
     paint: {
-      "line-color": "#404040",
+      "line-color": "#60a5fa",
       "line-width": 2,
     },
   },
@@ -281,22 +287,6 @@ const drawStyles: object[] = [
     },
   },
 ];
-
-function toFeatureCollection(
-  zones: ZoneFeature[],
-): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
-  return {
-    type: "FeatureCollection",
-    features: zones.map((zone) => ({
-      type: "Feature",
-      properties: {
-        id: zone.id,
-        name: zone.zone_name,
-      },
-      geometry: zone.geometry,
-    })),
-  };
-}
 
 function normalizePolygonCoordinates(
   coordinates: number[][],
@@ -333,19 +323,25 @@ export function Map({
   drawingMode,
   startDrawingSignal = 0,
   editingCoordinates = null,
+  editingZoneId = null,
   onDrawingComplete,
   onDrawingCancel,
   onPointsChange,
   onAreaChange,
   zones = [],
   selectedZoneId = null,
+  zonePopup = null,
   onZoneClick,
+  onClosePopup,
+  onEditFromPopup,
   className = "",
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const draw = useRef<MapboxDraw | null>(null);
+  const popupRef = useRef<maplibregl.Popup | null>(null);
   const drawingModeRef = useRef<DrawingMode>(drawingMode);
+  const mapLoadedRef = useRef(false);
   const [mapError, setMapError] = useState<string | null>(
     MAP_STYLE_URL ? null : "Map style URL is not configured",
   );
@@ -354,6 +350,8 @@ export function Map({
   const onAreaChangeRef = useRef(onAreaChange);
   const onDrawingCompleteRef = useRef(onDrawingComplete);
   const onDrawingCancelRef = useRef(onDrawingCancel);
+  const onClosePopupRef = useRef(onClosePopup);
+  const onEditFromPopupRef = useRef(onEditFromPopup);
 
   // Update refs when callbacks change
   useEffect(() => {
@@ -368,55 +366,111 @@ export function Map({
   useEffect(() => {
     onDrawingCancelRef.current = onDrawingCancel;
   }, [onDrawingCancel]);
+  useEffect(() => {
+    onClosePopupRef.current = onClosePopup;
+  }, [onClosePopup]);
+  useEffect(() => {
+    onEditFromPopupRef.current = onEditFromPopup;
+  }, [onEditFromPopup]);
 
   useEffect(() => {
     drawingModeRef.current = drawingMode;
   }, [drawingMode]);
 
-  const updateZonesVisualization = useCallback(
-    (mapInstance: MapLibreMap, zoneFeatures: ZoneFeature[]) => {
-      const source = mapInstance.getSource(ZONES_SOURCE_ID) as
-        | maplibregl.GeoJSONSource
-        | undefined;
-      if (!source) return;
+  const updateZonesInDraw = useCallback(
+    (drawInstance: MapboxDraw, mapInstance: MapLibreMap, zoneFeatures: ZoneFeature[], selectedId: string | null, editingId: string | null = null) => {
+      console.log("[updateZonesInDraw] zones:", zoneFeatures.length, "selectedId:", selectedId, "editingId:", editingId);
 
-      source.setData(toFeatureCollection(zoneFeatures));
-    },
-    [],
-  );
+      try {
+        // Remove static zone features from draw instance (they don't work properly anyway)
+        const all = drawInstance.getAll();
+        const staticFeatures = all.features.filter(
+          (f) => f.id && String(f.id).startsWith("zone-")
+        );
+        staticFeatures.forEach((f) => {
+          drawInstance.delete(f.id as string);
+        });
 
-  const updateSelectionStyles = useCallback(
-    (mapInstance: MapLibreMap, selectedId: string | null) => {
-      const selected = selectedId || "";
+        // Use a custom GeoJSON source for zones instead of draw instance
+        const source = mapInstance.getSource(ZONES_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
 
-      if (mapInstance.getLayer(ZONES_LAYER_ID)) {
-        mapInstance.setPaintProperty(ZONES_LAYER_ID, "fill-color", [
-          "case",
-          ["==", ["get", "id"], selected],
-          "#9333ea",
-          "#3b82f6",
-        ]);
-        mapInstance.setPaintProperty(ZONES_LAYER_ID, "fill-opacity", [
-          "case",
-          ["==", ["get", "id"], selected],
-          0.4,
-          0.2,
-        ]);
-      }
+        if (!source) {
+          console.log("[updateZonesInDraw] Creating zones source");
+          mapInstance.addSource(ZONES_SOURCE_ID, {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] },
+          });
+        }
 
-      if (mapInstance.getLayer(ZONES_HOVER_LAYER_ID)) {
-        mapInstance.setPaintProperty(ZONES_HOVER_LAYER_ID, "line-color", [
-          "case",
-          ["==", ["get", "id"], selected],
-          "#a855f7",
-          "#60a5fa",
-        ]);
-        mapInstance.setPaintProperty(ZONES_HOVER_LAYER_ID, "line-width", [
-          "case",
-          ["==", ["get", "id"], selected],
-          3,
-          2,
-        ]);
+        // Create zones fill layer if it doesn't exist
+        if (!mapInstance.getLayer(ZONES_LAYER_ID)) {
+          console.log("[updateZonesInDraw] Creating zones fill layer");
+          mapInstance.addLayer({
+            id: ZONES_LAYER_ID,
+            type: "fill",
+            source: ZONES_SOURCE_ID,
+            paint: {
+              "fill-color": "#3b82f6",
+              "fill-opacity": 0.2,
+            },
+          });
+        }
+
+        // Create zones border layer if it doesn't exist
+        if (!mapInstance.getLayer(ZONES_BORDER_LAYER_ID)) {
+          console.log("[updateZonesInDraw] Creating zones border layer");
+          mapInstance.addLayer({
+            id: ZONES_BORDER_LAYER_ID,
+            type: "line",
+            source: ZONES_SOURCE_ID,
+            paint: {
+              "line-color": "#60a5fa",
+              "line-width": 2,
+            },
+          });
+        }
+
+        // Update zones data (skip the one being edited)
+        const zonesSource = mapInstance.getSource(ZONES_SOURCE_ID) as maplibregl.GeoJSONSource;
+        const zonesToAdd = zoneFeatures.filter((z) => !editingId || z.id !== editingId);
+
+        zonesSource.setData({
+          type: "FeatureCollection",
+          features: zonesToAdd.map((zone) => ({
+            type: "Feature",
+            id: zone.id,
+            properties: {
+              id: zone.id,
+              name: zone.zone_name,
+            },
+            geometry: zone.geometry,
+          })),
+        });
+
+        // Update selected zone highlight
+        const selectedSource = mapInstance.getSource(SELECTED_ZONE_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+
+        if (selectedSource && selectedId && !editingId) {
+          const selectedZone = zoneFeatures.find((z) => z.id === selectedId);
+          if (selectedZone) {
+            selectedSource.setData({
+              type: "FeatureCollection",
+              features: [
+                {
+                  type: "Feature",
+                  properties: {},
+                  geometry: selectedZone.geometry,
+                },
+              ],
+            });
+          } else {
+            selectedSource.setData({ type: "FeatureCollection", features: [] });
+          }
+        } else if (selectedSource) {
+          selectedSource.setData({ type: "FeatureCollection", features: [] });
+        }
+      } catch (error) {
+        console.error("[updateZonesInDraw] Error:", error);
       }
     },
     [],
@@ -442,33 +496,24 @@ export function Map({
     );
 
     mapInstance.on("load", () => {
-      if (!mapInstance.getSource(ZONES_SOURCE_ID)) {
-        mapInstance.addSource(ZONES_SOURCE_ID, {
+      // Add source for selected zone highlight
+      if (!mapInstance.getSource(SELECTED_ZONE_SOURCE_ID)) {
+        mapInstance.addSource(SELECTED_ZONE_SOURCE_ID, {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
       }
 
-      if (!mapInstance.getLayer(ZONES_LAYER_ID)) {
+      // Add layer for selected zone highlight
+      if (!mapInstance.getLayer(SELECTED_ZONE_LAYER_ID)) {
         mapInstance.addLayer({
-          id: ZONES_LAYER_ID,
-          type: "fill",
-          source: ZONES_SOURCE_ID,
-          paint: {
-            "fill-color": "#3b82f6",
-            "fill-opacity": 0.2,
-          },
-        });
-      }
-
-      if (!mapInstance.getLayer(ZONES_HOVER_LAYER_ID)) {
-        mapInstance.addLayer({
-          id: ZONES_HOVER_LAYER_ID,
+          id: SELECTED_ZONE_LAYER_ID,
           type: "line",
-          source: ZONES_SOURCE_ID,
+          source: SELECTED_ZONE_SOURCE_ID,
           paint: {
-            "line-color": "#60a5fa",
-            "line-width": 2,
+            "line-color": "#9333ea",
+            "line-width": 3,
+            "line-opacity": 0.8,
           },
         });
       }
@@ -530,18 +575,22 @@ export function Map({
       console.log("[EventListeners] Event listeners attached successfully");
 
       // Store cleanup function on the map instance for later use
-      (mapInstance as any)._drawEventCleanup = () => {
+      type ExtendedMap = MapLibreMap & { _drawEventCleanup?: () => void };
+      (mapInstance as ExtendedMap)._drawEventCleanup = () => {
         mapInstance.off("draw.create", handleDrawCreate);
         mapInstance.off("draw.update", handleDrawUpdate);
         mapInstance.off("draw.delete", handleDrawDelete);
       };
 
-      updateZonesVisualization(mapInstance, zones);
-      updateSelectionStyles(mapInstance, selectedZoneId);
+      updateZonesInDraw(drawInstance, mapInstance, zones, selectedZoneId, editingZoneId);
+      mapLoadedRef.current = true;
     });
 
     mapInstance.on("error", (e) => {
       console.error("Map error:", e);
+      if (e && typeof e === "object" && "error" in e) {
+        console.error("Map error details:", (e as { error: Error }).error);
+      }
       setMapError("Failed to load map. Please try again.");
     });
 
@@ -549,14 +598,17 @@ export function Map({
 
     return () => {
       // Clean up draw event listeners before removing map
-      if (map.current && (map.current as any)._drawEventCleanup) {
-        (map.current as any)._drawEventCleanup();
+      type ExtendedMap = MapLibreMap & { _drawEventCleanup?: () => void };
+      const currentMap = map.current as ExtendedMap | null;
+      if (currentMap?._drawEventCleanup) {
+        currentMap._drawEventCleanup();
       }
       map.current?.remove();
       map.current = null;
       draw.current = null;
     };
-  }, [selectedZoneId, updateSelectionStyles, updateZonesVisualization, zones]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!map.current || !draw.current) return;
@@ -617,14 +669,9 @@ export function Map({
   ]);
 
   useEffect(() => {
-    if (!map.current) return;
-    updateZonesVisualization(map.current, zones);
-  }, [zones, updateZonesVisualization]);
-
-  useEffect(() => {
-    if (!map.current) return;
-    updateSelectionStyles(map.current, selectedZoneId);
-  }, [selectedZoneId, updateSelectionStyles]);
+    if (!draw.current || !map.current) return;
+    updateZonesInDraw(draw.current, map.current, zones, selectedZoneId, editingZoneId);
+  }, [zones, selectedZoneId, editingZoneId, updateZonesInDraw]);
 
   useEffect(() => {
     if (!map.current || !onZoneClick) return;
@@ -632,19 +679,52 @@ export function Map({
 
     const handleZoneLayerClick = (e: maplibregl.MapMouseEvent) => {
       if (drawingMode !== "none") return;
+
+      console.log("[handleZoneLayerClick] Map clicked at:", e.point, "lngLat:", [e.lngLat.lng, e.lngLat.lat]);
+
       const features = mapInstance.queryRenderedFeatures(e.point, {
         layers: [ZONES_LAYER_ID],
       });
 
+      console.log("[handleZoneLayerClick] Features found:", features.length);
+
       if (features.length > 0) {
-        const id = features[0].properties?.id as string | undefined;
-        if (id) onZoneClick(id);
+        const feature = features[0];
+        const zoneId = String(feature.id || feature.properties?.id || "");
+        console.log("[handleZoneLayerClick] Zone clicked:", zoneId);
+        // Pass the click coordinates for positioning the popup
+        onZoneClick(zoneId, [e.lngLat.lng, e.lngLat.lat]);
       }
     };
 
-    mapInstance.on("click", ZONES_LAYER_ID, handleZoneLayerClick);
+    // Only attach to the specific layer when it exists
+    const setupClickListener = () => {
+      if (mapInstance.getLayer(ZONES_LAYER_ID)) {
+        console.log("[handleZoneLayerClick] Setting up click listener on zones layer");
+        mapInstance.on("click", ZONES_LAYER_ID, handleZoneLayerClick);
+        return true;
+      }
+      console.log("[handleZoneLayerClick] Zones layer not found yet");
+      return false;
+    };
+
+    if (mapLoadedRef.current) {
+      setupClickListener();
+    } else {
+      // Try again after a short delay if map isn't loaded yet
+      const checkInterval = setInterval(() => {
+        if (mapLoadedRef.current && setupClickListener()) {
+          clearInterval(checkInterval);
+        }
+      }, 100);
+
+      return () => clearInterval(checkInterval);
+    }
+
     return () => {
-      mapInstance.off("click", ZONES_LAYER_ID, handleZoneLayerClick);
+      if (mapInstance.getLayer(ZONES_LAYER_ID)) {
+        mapInstance.off("click", ZONES_LAYER_ID, handleZoneLayerClick);
+      }
     };
   }, [drawingMode, onZoneClick]);
 
@@ -660,6 +740,128 @@ export function Map({
 
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Handle zone popup
+  useEffect(() => {
+    console.log("[Map popup useEffect] zonePopup:", zonePopup, "drawingMode:", drawingMode);
+    if (!map.current) return;
+    const mapInstance = map.current;
+
+    // Close existing popup
+    if (popupRef.current) {
+      popupRef.current.remove();
+      popupRef.current = null;
+    }
+
+    // Show new popup if zonePopup is provided
+    if (zonePopup && drawingMode === "none") {
+      console.log("[Map popup useEffect] Creating popup at:", [zonePopup.lng, zonePopup.lat]);
+
+      // Prevent popup from closing immediately on zone click
+      const popup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 8,
+      });
+
+      popup.setHTML(`
+        <div style="
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(4px);
+          border-radius: 6px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-family: system-ui, -apple-system, sans-serif;
+        ">
+          <span style="
+            font-size: 13px;
+            font-weight: 500;
+            color: #1f2937;
+            white-space: nowrap;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          ">${zonePopup.zoneName}</span>
+          <button id="zone-edit-btn" style="
+            padding: 6px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+          </button>
+        </div>
+      `);
+
+      popup.setLngLat([zonePopup.lng, zonePopup.lat]);
+      popup.addTo(mapInstance);
+      popupRef.current = popup;
+
+      console.log("[Map popup useEffect] Popup added to map");
+
+      // Add event listener to the edit button
+      const handleEditClick = (e: MouseEvent) => {
+        e.stopPropagation();
+        console.log("[Map popup] Edit button clicked for zone:", zonePopup.zoneId);
+        onEditFromPopupRef.current?.(zonePopup.zoneId);
+        onClosePopupRef.current?.();
+      };
+
+      // Use setTimeout to ensure the popup is rendered
+      setTimeout(() => {
+        const editBtn = document.getElementById("zone-edit-btn");
+        console.log("[Map popup] Edit button found:", !!editBtn);
+        if (editBtn) {
+          editBtn.addEventListener("click", handleEditClick);
+        }
+      }, 0);
+
+      // Close popup on map click (but not on zone layer click)
+      const handlePopupClose = (e: maplibregl.MapMouseEvent & { originalEvent?: MouseEvent }) => {
+        // Check if click was on a zone
+        const features = mapInstance.queryRenderedFeatures(e.point, {
+          layers: [ZONES_LAYER_ID],
+        });
+        if (features.length > 0) {
+          // Clicked on a zone, don't close popup - the zone click handler will handle it
+          return;
+        }
+        console.log("[Map popup] Map clicked (not on zone), closing popup");
+        onClosePopupRef.current?.();
+      };
+
+      mapInstance.on("click", handlePopupClose);
+
+      return () => {
+        mapInstance.off("click", handlePopupClose);
+        const editBtn = document.getElementById("zone-edit-btn");
+        if (editBtn) {
+          editBtn.removeEventListener("click", handleEditClick);
+        }
+        if (popupRef.current) {
+          popupRef.current.remove();
+          popupRef.current = null;
+        }
+      };
+    }
+
+    return () => {
+      if (popupRef.current) {
+        popupRef.current.remove();
+        popupRef.current = null;
+      }
+    };
+  }, [zonePopup, drawingMode]);
 
   return (
     <div className={`relative w-full h-full ${className}`}>
