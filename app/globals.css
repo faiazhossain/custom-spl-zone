@@ -1,26 +1,136 @@
 @import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf5ff;
+  --foreground: #581c87;
+
+  --card: #ffffff;
+  --card-foreground: #581c87;
+
+  --popover: #ffffff;
+  --popover-foreground: #581c87;
+
+  --primary: #9333ea;
+  --primary-foreground: #faf5ff;
+
+  --secondary: #f3e8ff;
+  --secondary-foreground: #6b21a8;
+
+  --muted: #f3e8ff;
+  --muted-foreground: #86198f;
+
+  --accent: #d8b4fe;
+  --accent-foreground: #581c87;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #faf5ff;
+
+  --border: #e9d5ff;
+  --input: #e9d5ff;
+  --ring: #a855f7;
+
+  --radius: 0.5rem;
+
+  --purple-50: #faf5ff;
+  --purple-100: #f3e8ff;
+  --purple-200: #e9d5ff;
+  --purple-300: #d8b4fe;
+  --purple-400: #c084fc;
+  --purple-500: #a855f7;
+  --purple-600: #9333ea;
+  --purple-700: #7e22ce;
+  --purple-800: #6b21a8;
+  --purple-900: #581c87;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-purple-50: var(--purple-50);
+  --color-purple-100: var(--purple-100);
+  --color-purple-200: var(--purple-200);
+  --color-purple-300: var(--purple-300);
+  --color-purple-400: var(--purple-400);
+  --color-purple-500: var(--purple-500);
+  --color-purple-600: var(--purple-600);
+  --color-purple-700: var(--purple-700);
+  --color-purple-800: var(--purple-800);
+  --color-purple-900: var(--purple-900);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* MapLibre GL overrides */
+.maplibregl-map {
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+.maplibregl-popup-content {
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.maplibregl-ctrl-group {
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.maplibregl-ctrl-group button {
+  border-color: var(--border);
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: var(--muted);
+}
+
+/* Ensure map controls appear above custom overlays */
+.maplibregl-ctrl {
+  z-index: 20;
+}
+
+/* Custom scrollbar for zone list */
+.zone-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.zone-list::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+.zone-list::-webkit-scrollbar-thumb {
+  background: var(--purple-300);
+  border-radius: 3px;
+}
+
+.zone-list::-webkit-scrollbar-thumb:hover {
+  background: var(--purple-400);
 }
