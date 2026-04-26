@@ -97,7 +97,8 @@ async function request<T>(
       });
     } else {
       const method = options.method || "GET";
-      const url = `/api/proxy?endpoint=${encodeURIComponent(endpoint)}`;
+      const basePath = process.env.NEXT_PUBLIC_BASEPATH || "";
+      const url = `${basePath}/api/proxy?endpoint=${encodeURIComponent(endpoint)}`;
       response = await fetch(url, {
         ...options,
         method,

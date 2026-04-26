@@ -235,15 +235,9 @@ export default function Home() {
         return;
       }
 
-      const createdZone = response.data ?? {
-        id: Date.now().toString(),
-        zone_name: name,
-        zone_geojson: payload.zone_geojson,
-        created_at: new Date().toISOString(),
-      };
+      // Refresh zones list from server since API doesn't return the created zone with ID
+      await fetchZones();
 
-      setZones((prev) => [...prev, createdZone]);
-      setSelectedZoneId(createdZone.id);
       setDrawingMode("none");
       setCurrentPoints([]);
       setCurrentAreaSqm(null);
@@ -252,7 +246,7 @@ export default function Home() {
       setIsSavingZone(false);
       toast.success(`Zone "${name}" created successfully!`);
     },
-    [pendingZone],
+    [pendingZone, fetchZones],
   );
 
   const handleSaveEditedZone = useCallback(async () => {
@@ -275,15 +269,13 @@ export default function Home() {
       return;
     }
 
-    const updatedZone = response.data ?? {
-      ...editingZone,
-      zone_geojson: payload.zone_geojson,
-    };
+    // Keep the selected zone ID to highlight after refresh
+    const zoneIdToSelect = editingZone.id;
 
-    setZones((prev) =>
-      prev.map((z) => (z.id === editingZone.id ? updatedZone : z)),
-    );
-    setSelectedZoneId(editingZone.id);
+    // Refresh zones list from server
+    await fetchZones();
+
+    setSelectedZoneId(zoneIdToSelect);
     setDrawingMode("none");
     setCurrentPoints([]);
     setCurrentAreaSqm(null);
@@ -292,7 +284,7 @@ export default function Home() {
     setEditingZoneInitialName("");
     setIsSavingZone(false);
     toast.success(`Zone "${editingZoneInitialName}" updated successfully!`);
-  }, [editingZone, editingZoneInitialName, currentPoints]);
+  }, [editingZone, editingZoneInitialName, currentPoints, fetchZones]);
 
   const handleCompleteDrawing = useCallback(
     (coordinates: [number, number][]) => {
@@ -426,7 +418,9 @@ export default function Home() {
       return;
     }
 
-    setZones((prev) => prev.filter((z) => z.id !== zoneToDelete.id));
+    // Refresh zones list from server
+    await fetchZones();
+
     if (selectedZoneId === zoneToDelete.id) {
       setSelectedZoneId(null);
     }
@@ -434,7 +428,7 @@ export default function Home() {
     setZoneToDelete(null);
     setIsDeletingZone(false);
     toast.success(`Zone "${zoneToDelete.zone_name}" deleted.`);
-  }, [zoneToDelete, selectedZoneId]);
+  }, [zoneToDelete, selectedZoneId, fetchZones]);
 
   const handlePointsChange = useCallback((points: [number, number][]) => {
     setCurrentPoints(points);
