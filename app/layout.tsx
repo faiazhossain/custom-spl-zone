@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SPL Custom Zone - Saudi Arabia",
-  description: "Draw and manage custom polygon zones on the Saudi Arabia SPL Prime map",
+  description: "Draw and manage custom polygon zones on the SPL map",
 };
 
 export default function RootLayout({
@@ -26,13 +26,13 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang='en'
       className={`${outfit.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className='min-h-full flex flex-col font-sans'>
         {children}
         <Toaster
-          position="top-center"
+          position='top-center'
           toastOptions={{
             style: {
               background: "var(--card)",

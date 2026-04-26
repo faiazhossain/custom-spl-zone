@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = process.env.NEXT_PUBLIC_BARIKOI_API_URL;
-const API_TOKEN = process.env.NEXT_PUBLIC_BARIKOI_API_TOKEN;
+const FALLBACK_API_TOKEN = process.env.NEXT_PUBLIC_BARIKOI_API_TOKEN;
+
+function getApiToken(request: NextRequest): string {
+  // Use the API key from the header (set by client after server validation)
+  // Fall back to environment variable for server-side requests
+  return (
+    request.headers.get("X-API-Key") ||
+    FALLBACK_API_TOKEN ||
+    ""
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,13 +23,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing endpoint parameter" }, { status: 400 });
     }
 
+    const API_TOKEN = getApiToken(request);
     if (!API_URL || !API_TOKEN) {
       console.error("[PROXY] API not configured", { hasUrl: !!API_URL, hasToken: !!API_TOKEN });
       return NextResponse.json({ error: "API not configured" }, { status: 500 });
     }
 
     const targetUrl = `${API_URL}${endpoint}`;
-    console.log("[PROXY] Forwarding POST request", { targetUrl, body });
+    console.log("[PROXY] Forwarding POST request", { targetUrl });
 
     const response = await fetch(targetUrl, {
       method: "POST",
@@ -61,6 +72,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing endpoint parameter" }, { status: 400 });
   }
 
+  const API_TOKEN = getApiToken(request);
   if (!API_URL || !API_TOKEN) {
     return NextResponse.json({ error: "API not configured" }, { status: 500 });
   }

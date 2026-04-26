@@ -1,7 +1,18 @@
 import { ApiResponse, CreateZoneRequest, Zone } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_BARIKOI_API_URL;
-const API_TOKEN = process.env.NEXT_PUBLIC_BARIKOI_API_TOKEN;
+const FALLBACK_API_TOKEN = process.env.NEXT_PUBLIC_BARIKOI_API_TOKEN;
+
+// Dynamic API key storage (set by client component after server validation)
+let dynamicApiKey: string | null = null;
+
+export function setApiKey(key: string) {
+  dynamicApiKey = key;
+}
+
+function getApiToken(): string {
+  return dynamicApiKey || FALLBACK_API_TOKEN || "";
+}
 
 type JsonRecord = Record<string, unknown>;
 
@@ -76,7 +87,8 @@ async function request<T>(
     return { error: "API URL is not configured" };
   }
 
-  if (!API_TOKEN) {
+  const apiToken = getApiToken();
+  if (!apiToken) {
     return { error: "API token is not configured" };
   }
 
@@ -89,7 +101,7 @@ async function request<T>(
       response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
         headers: {
-          Authorization: `Bearer ${API_TOKEN}`,
+          Authorization: `Bearer ${apiToken}`,
           "Content-Type": "application/json",
           Accept: "application/json, text/plain, */*",
           ...options.headers,
@@ -104,6 +116,7 @@ async function request<T>(
         method,
         headers: {
           "Content-Type": "application/json",
+          "X-API-Key": apiToken,
           ...options.headers,
         },
       });
