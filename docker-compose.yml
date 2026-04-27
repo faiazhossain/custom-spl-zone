@@ -1,6 +1,6 @@
 services:
   app:
-    image: rilusmahmud/spl-custom-zone:main-1.0.2
+    image: rilusmahmud/spl-custom-zone:main-1.0.3
     container_name: spl-custom-zone
     restart: unless-stopped
     ports:

@@ -18,6 +18,7 @@ interface ZoneSidebarProps {
   onSelectZone?: (zone: Zone) => void;
   onEditZone?: (zone: Zone) => void;
   onDeleteZone?: (zone: Zone) => void;
+  onDownloadZone?: (zone: Zone) => void;
 }
 
 export function ZoneSidebar({
@@ -33,6 +34,7 @@ export function ZoneSidebar({
   onSelectZone,
   onEditZone,
   onDeleteZone,
+  onDownloadZone,
 }: ZoneSidebarProps) {
   return (
     <>
@@ -153,6 +155,11 @@ export function ZoneSidebar({
                   actionsDisabled || !onDeleteZone
                     ? undefined
                     : () => onDeleteZone(zone)
+                }
+                onDownload={
+                  actionsDisabled || !onDownloadZone
+                    ? undefined
+                    : () => onDownloadZone(zone)
                 }
               />
             ))

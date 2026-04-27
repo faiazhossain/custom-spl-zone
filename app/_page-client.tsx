@@ -5,6 +5,7 @@ import { Map } from "@/components/map";
 import { ZoneSidebar } from "@/components/zone-sidebar";
 import { ZoneNameDialog } from "@/components/zone-name-dialog";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { ZoneDownloadDialog } from "@/components/zone-download-dialog";
 import { DrawingMode, Zone } from "@/lib/types";
 import { api, setApiKey } from "@/lib/api";
 import { toast } from "sonner";
@@ -145,10 +146,12 @@ export default function Home({ apiKey }: ClientPageProps) {
   // Dialog states
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [pendingZone, setPendingZone] = useState<[number, number][] | null>(
     null,
   );
   const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null);
+  const [zoneToDownload, setZoneToDownload] = useState<Zone | null>(null);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [editingZoneInitialName, setEditingZoneInitialName] =
     useState<string>("");
@@ -439,6 +442,19 @@ export default function Home({ apiKey }: ClientPageProps) {
     toast.success(`Zone "${zoneToDelete.zone_name}" deleted.`);
   }, [zoneToDelete, selectedZoneId, fetchZones]);
 
+  const handleDownloadZone = useCallback(
+    (zone: Zone) => {
+      setZoneToDownload(zone);
+      setShowDownloadDialog(true);
+    },
+    [],
+  );
+
+  const closeDownloadDialog = useCallback(() => {
+    setShowDownloadDialog(false);
+    setZoneToDownload(null);
+  }, []);
+
   const handlePointsChange = useCallback((points: [number, number][]) => {
     setCurrentPoints(points);
   }, []);
@@ -603,6 +619,7 @@ export default function Home({ apiKey }: ClientPageProps) {
         onSelectZone={handleSelectZone}
         onEditZone={handleEditZone}
         onDeleteZone={handleDeleteClick}
+        onDownloadZone={handleDownloadZone}
       />
 
       {/* Zone Name Dialog */}
@@ -628,6 +645,13 @@ export default function Home({ apiKey }: ClientPageProps) {
         onConfirm={handleConfirmDelete}
         zoneName={zoneToDelete?.zone_name}
         isDeleting={isDeletingZone}
+      />
+
+      {/* Zone Download Dialog */}
+      <ZoneDownloadDialog
+        open={showDownloadDialog}
+        zone={zoneToDownload}
+        onClose={closeDownloadDialog}
       />
     </div>
   );

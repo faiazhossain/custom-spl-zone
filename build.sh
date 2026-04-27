@@ -12,5 +12,5 @@ docker buildx build \
   --build-arg NEXT_PUBLIC_MIN_ZOOM=$NEXT_PUBLIC_MIN_ZOOM \
   --build-arg NEXT_PUBLIC_MAX_ZOOM=$NEXT_PUBLIC_MAX_ZOOM \
   --build-arg NEXT_PUBLIC_BASEPATH=$NEXT_PUBLIC_BASEPATH \
-  -t rilusmahmud/spl-custom-zone:main-1.0.4 \
+  -t rilusmahmud/spl-custom-zone:main-1.0.3 \
   --push .
