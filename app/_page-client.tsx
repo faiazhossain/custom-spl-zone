@@ -320,7 +320,14 @@ export default function Home({ apiKey }: ClientPageProps) {
 
   const handleZoneClick = useCallback(
     (zoneId: string, lngLat?: [number, number]) => {
-      console.log("[handleZoneClick] zoneId:", zoneId, "lngLat:", lngLat, "drawingMode:", drawingMode);
+      console.log(
+        "[handleZoneClick] zoneId:",
+        zoneId,
+        "lngLat:",
+        lngLat,
+        "drawingMode:",
+        drawingMode,
+      );
       setSelectedZoneId(zoneId);
       // Show popup at the click location for UX-friendly editing
       if (lngLat && drawingMode === "none") {
@@ -442,13 +449,10 @@ export default function Home({ apiKey }: ClientPageProps) {
     toast.success(`Zone "${zoneToDelete.zone_name}" deleted.`);
   }, [zoneToDelete, selectedZoneId, fetchZones]);
 
-  const handleDownloadZone = useCallback(
-    (zone: Zone) => {
-      setZoneToDownload(zone);
-      setShowDownloadDialog(true);
-    },
-    [],
-  );
+  const handleDownloadZone = useCallback((zone: Zone) => {
+    setZoneToDownload(zone);
+    setShowDownloadDialog(true);
+  }, []);
 
   const closeDownloadDialog = useCallback(() => {
     setShowDownloadDialog(false);
@@ -517,7 +521,12 @@ export default function Home({ apiKey }: ClientPageProps) {
 
           <div>
             <h1 className='text-xl sm:text-2xl font-bold text-foreground bg-card/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border border-border'>
-              Custom Zone - SPL
+              <img
+                src='/custom-zone/na-logo.webp'
+                alt='Logo'
+                className='inline w-5 h-6 mr-2 align-middle'
+              />
+              Custom Zone - National Address
             </h1>
             <p className='text-sm text-muted-foreground bg-card/90 backdrop-blur-sm px-4 py-1 rounded-b-lg shadow-sm border border-t-0 border-border'>
               Draw and manage custom polygon zones
